@@ -1,0 +1,82 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#101426"><link rel="manifest" href="manifest.json"><link rel="icon" href="icon.svg"><title>JEE Backlog Killer</title>
+<style>
+:root{--bg:#101426;--c:#1a2038;--c2:#262d4d;--t:#eef0ff;--m:#8f97bf;--a:#7b8cff;--g:#3ecf8e;--y:#f5b942;--r:#ff6b6b;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:15px/1.4 system-ui,sans-serif;padding:env(safe-area-inset-top) 0 calc(72px + env(safe-area-inset-bottom))}
+#app{max-width:560px;margin:auto;padding:14px}h1{font-size:21px;margin:4px 0 12px}h3{margin:0 0 8px;font-size:15px}
+.card{background:var(--c);border-radius:16px;padding:14px;margin-bottom:12px}.row{display:flex;align-items:center;gap:10px}.sp{justify-content:space-between}.m{color:var(--m);font-size:13px}
+.bar{height:8px;background:var(--c2);border-radius:9px;overflow:hidden}.bar i{display:block;height:100%;background:var(--a);border-radius:9px;transition:width .4s}
+.btn{background:var(--a);color:#fff;border:0;border-radius:12px;padding:10px 14px;font:inherit;font-weight:600}.btn:focus-visible{outline:2px solid var(--y)}.big{width:100%;padding:16px;font-size:17px}.ghost{background:var(--c2)}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#161b31;padding-bottom:env(safe-area-inset-bottom)}nav button{flex:1;background:0;border:0;color:var(--m);padding:10px 0;font:inherit;font-size:12px}nav .on{color:var(--a)}
+.ring{width:88px;height:88px;border-radius:50%;background:conic-gradient(var(--g) calc(var(--p)*1%),var(--c2) 0);display:grid;place-items:center;flex:none}.ring b{background:var(--c);width:68px;height:68px;border-radius:50%;display:grid;place-items:center;font-size:18px}
+.task{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--c2)}.dn{opacity:.45}.tag{font-size:11px;padding:2px 7px;border-radius:8px;background:var(--c2)}
+.hm{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.hm i{aspect-ratio:1;border-radius:6px;background:var(--c2)}
+.bars{display:flex;align-items:flex-end;gap:6px;height:70px}.bars i{flex:1;background:var(--a);border-radius:5px 5px 0 0}
+#tm{position:fixed;inset:0;background:var(--bg);z-index:9;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:16px;text-align:center;padding:20px}#tm .t{font-size:56px;font-variant-numeric:tabular-nums}
+</style></head><body><div id="app"></div><nav id="nav"></nav>
+<script>
+const K='jeebk1',$=s=>document.querySelector(s),ymd=n=>new Date(Date.now()+n*864e5).toLocaleDateString('en-CA'),td=()=>ymd(0);
+const PH='Units and Measurement|10|10|6|6;Mathematical Tools|6|6|4|4;Motion in a Straight Line|12|12|8|8;Motion in a Plane|12|4|8|0;Laws of Motion|21|0|12|0;Circular Motion|8|0|5|0;Work, Energy and Power|12|0|8|0;Centre of Mass & System of Particles|12|0|8|0;Rotational Motion|20|0|12|0;Gravitation|8|0|5|0;Kinetic Theory & Thermodynamics|14|0|9|0;Mechanical Properties of Solids|6|0|4|0;Mechanical Properties of Fluids|8|0|5|0;Thermal Properties of Matter|8|0|5|0;Simple Harmonic Motion|10|0|6|0;Waves|12|0|8|0';
+const CH='Mole Concept|21|21|17|7;Structure of Atom|18|11|10|4;Organic Ch 1|12;Organic Ch 2|12;Periodic Table|14|0|9|0;Chemical Bonding|26|1|14|0;P-block Elements (13, 14)|12|0|6|0;S-block Element|10|0|5|0;Hydrogen and its Compound|8|0|4|0;State of Matter|5|0|3|0;Thermodynamics|15|0|10|0;Redox Reaction|7|1|4|0;Chemical Equilibrium|7|1|3|0;Ionic Equilibrium|4|1|1|0';
+const MR='Basic Mathematics|20|5|12|0;Sets|6|0|3|0;Quadratic Equations|11|3|7|0;Trigonometric Functions|14|2|7|0;Trigonometric Equation|7|0|5|0;Sequence and Series|11|0|8|0;Complex Number-I|5|0|4|0;Permutations and Combinations|9|0|8|0';
+const ML='Binomial Theorem;Relation Function;Straight Lines;Circles;Conic Sections: Parabola;Conic Sections: Ellipse;Conic Sections: Hyperbola;Complex Number-II;Limits and Derivatives;Statistics;Probability;3D Geometry;Linear Inequalities;Solution of Triangle';
+const SN={P:'⚛️ Physics',C:'🧪 Chemistry',M:'📐 Maths'},TABS=[['home','🏠','Home'],['sch','🗓','Schedule'],['bk','🔥','Backlog'],['sub','📚','Subjects'],['an','📊','Analytics']];
+const mk=(s,str,live)=>str.split(';').map(x=>{const a=x.split('|');return{s,n:a[0],L:+a[1]||8,l:+a[2]||0,D:+a[3]||5,d:+a[4]||0,live:live?1:0}});
+const init=()=>({ch:[...mk('P',PH),...mk('C',CH),...mk('M',MR),...mk('M',ML,1)].map((c,i)=>(c.id=i,c)),plan:{},log:{},xp:0,dpps:[],timer:null,tab:'home',carry:0});
+let S;try{S=JSON.parse(localStorage[K])}catch(e){}S=S||init();
+const save=()=>{try{localStorage[K]=JSON.stringify(S)}catch(e){}},lg=d=>S.log[d]||(S.log[d]={m:0,bk:0,lec:0,dpp:0,rev:0,done:0,tot:0}),pc=c=>Math.round(100*(c.l+c.d)/(c.L+c.D));
+const by=(s,v)=>S.ch.filter(c=>c.s==s&&c.live==v),nxt=(s,v)=>by(s,v).find(c=>c.l<c.L);
+const bkl=()=>by('M',0).filter(c=>c.l<c.L).map((c,i)=>({c,r:i-(c.L-c.l<=3?2:0)})).sort((a,b)=>a.r-b.r).map((o,i)=>({c:o.c,p:i<2?0:i<5?1:2}));
+const backlog=()=>by('M',0).reduce((a,c)=>a+c.L-c.l,0);
+function gen(){const d=td();if(S.plan[d])return;const w=new Date().getDay(),ks=Object.keys(S.plan).sort(),last=ks[ks.length-1];
+ S.carry=last?S.plan[last].filter(t=>!t.done).length+5*Math.max(0,Math.round((new Date(d)-new Date(last))/864e5)-1):0;
+ const T=[],add=(k,c,t)=>c&&T.push({k,c:c.id,t,done:0});
+ if(w>=1&&w<=4)add('lec',nxt('M',1),'Maths LIVE 4:00 PM');else{const b=bkl()[0];add('bk',b&&b.c,'Maths backlog')}
+ add('lec',nxt('P',0),'Physics');add('lec',nxt('C',0),'Chemistry');
+ const n=2+Math.min(2,Math.ceil(S.carry/4));
+ S.ch.filter(c=>c.d<c.D&&c.l>0).sort((a,b)=>(b.l/b.L-b.d/b.D)-(a.l/a.L-a.d/a.D)).slice(0,n).forEach(c=>add('dpp',c,'DPP'));
+ T.push({k:'rev',c:-1,t:'Revision '+(w?30:60)+' min',done:0});S.plan[d]=T;lg(d).tot=T.length;save()}
+const nm=t=>{const c=S.ch[t.c];return c?`${t.t} · ${c.n}`+(t.k=='dpp'?` · DPP ${c.d+1}`:` · L${c.l+1}`):t.t};
+const el=()=>S.timer?S.timer.acc+(S.timer.run?Date.now()-S.timer.st:0):0,fmt=ms=>{const s=Math.floor(ms/1e3);return[s/3600|0,s/60%60|0,s%60].map(x=>String(x).padStart(2,'0')).join(':')};
+function start(i){S.timer={i,st:Date.now(),acc:0,run:1,d:td(),min:0};save();show()}
+function pz(){const T=S.timer;if(T.run){T.acc+=Date.now()-T.st;T.run=0}else{T.st=Date.now();T.run=1}save();show()}
+function mn(v){S.timer.min=v;save();render()}
+function show(){const T=S.timer;let e=$('#tm');if(!T||T.min){e&&e.remove();return}if(!e){e=document.createElement('div');e.id='tm';document.body.append(e)}
+ const t=S.plan[T.d][T.i];e.innerHTML=`<div class="m">Task ${T.i+1}</div><h1>${nm(t)}</h1><div class="t" id="tt">${fmt(el())}</div><div class="row"><button class="btn ghost" onclick="pz()">${T.run?'⏸ Pause':'▶ Resume'}</button><button class="btn" onclick="fin()">✅ Complete</button></div><div class="row"><button class="btn ghost" onclick="mn(1)">Minimize</button><button class="btn ghost" onclick="if(confirm('Discard timer?')){S.timer=null;save();render()}">Discard</button></div>`}
+setInterval(()=>{const a=$('#tt'),b=$('#mt');if(a)a.textContent=fmt(el());if(b)b.textContent=fmt(el())},1000);
+const ask=(q,v)=>{const x=prompt(q,v);return x===null?null:+x};
+function dpp(c,m){const a=ask('Questions attempted?',10);if(a===null)return;const r=ask('Correct?',0);if(r===null)return;const mm=m||ask('Minutes taken?',30);if(mm===null)return;c.d=Math.min(c.D,c.d+1);S.dpps.push({d:td(),a,r,m:mm});const L=lg(td());L.dpp++;if(!m)L.m+=mm;S.xp+=15;return 1}
+function fin(){const T=S.timer,m=ask('Minutes spent (edit if needed)',Math.max(1,Math.round(el()/6e4)));if(m===null)return;S.timer=null;done(T.d,T.i,m||1);render()}
+function done(d,i,m){const t=S.plan[d][i],c=S.ch[t.c],L=lg(d);if(t.done)return;
+ if(t.k=='dpp'){if(!dpp(c,m))return}else if(t.k=='rev'){L.rev=1;S.xp+=10;L.m+=m}else{c.l=Math.min(c.L,c.l+1);L.lec++;L.m+=m;if(t.k=='bk')L.bk++;S.xp+=t.k=='bk'?25:20}
+ t.done=1;L.done++;if(L.done==L.tot&&!L.bonus){L.bonus=1;S.xp+=50}save();
+ if((t.k=='lec'||t.k=='bk')&&c.d<c.D&&confirm('DPP available: '+c.n+'. Start DPP now?')){dpp(c);save()}}
+function now(){const T=S.plan[td()],i=T.findIndex(t=>!t.done);i<0?alert('Everything for today is done.'):start(i)}
+function streak(){let run=0,best=0,prev=null;for(const d of Object.keys(S.log).sort()){const l=S.log[d];if(l.tot&&l.done/l.tot>=.7){run=prev&&Math.round((new Date(d)-new Date(prev))/864e5)==1?run+1:1;prev=d;best=Math.max(best,run)}else{run=0;prev=null}}return[prev&&(prev==td()||prev==ymd(-1))?run:0,best]}
+function home(){gen();const T=S.plan[td()],dn=T.filter(t=>t.done).length,p=Math.round(100*dn/T.length),st=streak()[0],L=lg(td()),M=S.timer&&S.timer.min;
+ const ex=Math.min(2,Math.ceil(S.carry/4));
+ let h=`<h1>Today</h1>`+(M?`<div class="card row sp" onclick="mn(0)"><b>⏱ <span id="mt">${fmt(el())}</span></b><span class="m">${S.timer.run?'running':'paused'} · tap to open</span></div>`:'')
+ +(S.carry?`<div class="card" style="border-left:4px solid var(--y)"><b>Recovery mode</b><div class="m">${S.carry} unfinished tasks are spread over the next 4 days (+${ex} DPP per day). Nothing is piled onto one day.</div></div>`:'')
+ +`<div class="card row"><div class="ring" style="--p:${p}"><b>${p}%</b></div><div style="flex:1"><div>Backlog remaining: <b>${backlog()} lectures</b></div><div class="m">Streak ${st} days · ${S.xp} XP · Level ${Math.floor(S.xp/500)+1}</div><div class="m">Studied today: ${L.m} min</div></div></div>
+ <button class="btn big" style="margin-bottom:12px" onclick="now()">WHAT SHOULD I STUDY NOW?</button><div class="card"><h3>Today's plan (${dn}/${T.length})</h3>`
+ +T.map((t,i)=>`<div class="task ${t.done?'dn':''}"><div style="flex:1"><b>${nm(t)}</b></div>${t.done?'✅':`<button class="btn" onclick="start(${i})">Start</button>`}</div>`).join('')+'</div>';
+ if(p==100){const ds=S.dpps.filter(x=>x.d==td()),a=ds.reduce((s,x)=>s+x.a,0),r=ds.reduce((s,x)=>s+x.r,0),nx=S.ch.filter(c=>c.d<c.D&&c.l>0)[0];
+  h+=`<div class="card"><h3>Today's report</h3>Lectures ${L.lec} · DPP ${L.dpp} · Backlog cleared ${L.bk} · Study time ${Math.floor(L.m/60)}h ${L.m%60}m · Accuracy ${a?Math.round(100*r/a):0}%<div class="m">Tomorrow's priority: ${nx?nx.n+' DPP':'new lectures'}</div></div>`}return h}
+const sch=()=>{const w=new Date().getDay(),A=[['3:00','Reach library, DPP or revision'],['4:00–5:45',w>=1&&w<=4?'Maths LIVE class':'Maths backlog lecture'],['5:45–6:15','Break'],['6:15–7:30','Physics recorded lecture'],['7:30–7:45','Break'],['7:45–9:00','Chemistry recorded lecture'],['Home','Question practice + 30 min revision']];
+ return`<h1>Schedule</h1><div class="card"><h3>${['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][w]}</h3>`+A.map(a=>`<div class="task"><b style="width:86px">${a[0]}</b><span>${a[1]}</span></div>`).join('')+`</div><div class="card m">Max 3 lectures a day: Maths (live Mon–Thu, backlog Fri–Sun) + Physics 1 + Chemistry 1. Sunday adds a 60 min revision and a weekly review.</div>`};
+const bkv=()=>{const B=bkl(),f=['🔥 HIGH','🟡 MEDIUM','🟢 LOW'];return`<h1>Backlog</h1><div class="card"><b>${backlog()} lectures left</b><div class="m">About ${Math.ceil(backlog()/3)} weeks at 3 backlog lectures a week (Fri, Sat, Sun).</div></div>`+B.map(o=>`<div class="card"><div class="row sp"><b>${o.c.n}</b><span class="tag">${f[o.p]}</span></div><div class="m">${o.c.L-o.c.l} lectures · ${o.c.D-o.c.d} DPPs pending</div><div class="bar"><i style="width:${pc(o.c)}%"></i></div></div>`).join('')};
+const adj=(i,k,n)=>{const c=S.ch[i];c[k]=Math.max(0,Math.min(k=='l'?c.L:c.D,c[k]+n));save();render()};
+function ed(i){const c=S.ch[i],v=prompt('Total lectures, total DPPs',c.L+','+c.D);if(!v)return;const[a,b]=v.split(',').map(Number);if(a>0&&b>=0){c.L=a;c.D=b;c.l=Math.min(c.l,a);c.d=Math.min(c.d,b);save();render()}}
+const sub=()=>'<h1>Subjects</h1>'+['P','C','M'].map(s=>`<div class="card"><h3>${SN[s]}</h3>`+S.ch.filter(c=>c.s==s).map(c=>`<div style="padding:8px 0;border-top:1px solid var(--c2)"><div class="row sp"><b>${c.n}</b>${c.live?'<span class="tag">LIVE</span>':''}</div><div class="m">Lec ${c.l}/${c.L} · DPP ${c.d}/${c.D} · ~${Math.round((c.L-c.l)*1.5+(c.D-c.d)*.75)}h left</div><div class="bar"><i style="width:${pc(c)}%"></i></div><div class="row" style="margin-top:6px">${[['l',1,'L+'],['l',-1,'L−'],['d',1,'D+'],['d',-1,'D−']].map(a=>`<button class="btn ghost" onclick="adj(${c.id},'${a[0]}',${a[1]})">${a[2]}</button>`).join('')}<button class="btn ghost" onclick="ed(${c.id})">✎</button></div></div>`).join('')+'</div>').join('');
+function an(){const A=S.ch,sm=f=>A.reduce((a,c)=>a+f(c),0),ds=S.dpps,a=ds.reduce((s,x)=>s+x.a,0),r=ds.reduce((s,x)=>s+x.r,0),[cur,best]=streak(),wk=[];
+ for(let i=6;i>=0;i--)wk.push((S.log[ymd(-i)]||{m:0}).m);const mx=Math.max(60,...wk),b=(o,n)=>{let t=0;for(let i=o;i<o+7;i++)t+=(S.log[ymd(-i)]||{bk:0}).bk;return t};
+ let hm='';for(let i=27;i>=0;i--){const l=S.log[ymd(-i)],q=l&&l.tot?l.done/l.tot:-1;hm+=`<i style="background:${q<0?'':q>=1?'var(--g)':q>=.5?'var(--y)':i?'var(--r)':''}"></i>`}
+ return`<h1>Analytics</h1><div class="card"><div class="row sp"><span>Lectures done <b>${sm(c=>c.l)}</b></span><span>DPPs done <b>${sm(c=>c.d)}</b></span></div><div class="row sp"><span>Backlog left <b>${backlog()}</b></span><span>DPP accuracy <b>${a?Math.round(100*r/a):0}%</b></span></div><div class="row sp"><span>Streak <b>${cur}</b></span><span>Best <b>${best}</b></span></div></div>
+ <div class="card"><h3>Subject progress</h3>${['P','C','M'].map(s=>{const L=A.filter(c=>c.s==s),p=Math.round(100*L.reduce((x,c)=>x+c.l+c.d,0)/L.reduce((x,c)=>x+c.L+c.D,0));return`<div class="row sp"><span>${SN[s]}</span><span>${p}%</span></div><div class="bar" style="margin-bottom:8px"><i style="width:${p}%"></i></div>`}).join('')}</div>
+ <div class="card"><h3>Study minutes, last 7 days</h3><div class="bars">${wk.map(m=>`<i style="height:${Math.max(3,60*m/mx)}px"></i>`).join('')}</div></div>
+ <div class="card"><h3>Backlog cleared</h3>This week <b>${b(0)}</b> · last week <b>${b(7)}</b> lectures</div>
+ <div class="card"><h3>Last 28 days</h3><div class="hm">${hm}</div><div class="m">Green: done · Yellow: partly · Red: missed</div></div>
+ <button class="btn ghost big" onclick="if(confirm('Reset ALL progress?')){localStorage.removeItem(K);location.reload()}">Reset progress</button>`}
+const go=t=>{S.tab=t;save();render()};
+function render(){$('#app').innerHTML=({home,sch,bk:bkv,sub,an})[S.tab]();$('#nav').innerHTML=TABS.map(t=>`<button class="${S.tab==t[0]?'on':''}" onclick="go('${t[0]}')">${t[1]}<br>${t[2]}</button>`).join('');show()}
+render();if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script></body></html>
